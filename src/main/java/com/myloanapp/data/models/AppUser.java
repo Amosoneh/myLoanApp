@@ -3,7 +3,9 @@ package com.myloanapp.data.models;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 
-@Setter @Getter @AllArgsConstructor @NoArgsConstructor @Builder
+@Setter @Getter
+@AllArgsConstructor
+@NoArgsConstructor @Builder
 public class AppUser {
     @Id
     private String id;

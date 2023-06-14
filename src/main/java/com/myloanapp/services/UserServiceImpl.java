@@ -27,17 +27,20 @@ public class UserServiceImpl implements UserService {
     private final LoanApplicationRepository loanApplicationRepository;
     @Override
     public RegisterResponse register(RegisterRequest request) throws UserAlreadyExistException{
-        var foundUser = userRepository.findUserByEmail(request.getEmail());
-        if (foundUser != null) throw new UserAlreadyExistException(String.format("User with this email, %s already exist",request.getEmail()));
-        AppUser user = new AppUser();
-        user.setEmail(request.getEmail());
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setPassword(request.getPassword());
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setRole(Role.valueOf(request.getRole().toUpperCase()));
-        AppUser savedUser = userRepository.save(user);
-        return buildRegResponse(savedUser);
+        boolean anyMatch = userRepository.findAll().stream()
+                .anyMatch(user1 -> user1.getEmail().equals(request.getEmail()));
+        if(anyMatch) throw new UserAlreadyExistException("user with email already exist");
+        AppUser user = AppUser.builder()
+                .email(request.getEmail())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .password(request.getPassword())
+                .phoneNumber(request.getPhoneNumber())
+                .role(Role.valueOf(request.getRole().toUpperCase()))
+                .build();
+        userRepository.save(user);
+
+        return buildRegResponse(user);
     }
 
     private RegisterResponse buildRegResponse(AppUser user) {
@@ -76,16 +79,17 @@ public class UserServiceImpl implements UserService {
         var foundUser = userRepository.findUserById(userId);
         if (foundUser == null) throw  new UserNotFoundException("User not found");
         AppUser user = new AppUser();
-        if (foundUser.getRole().equals(Role.CUSTOMER)){
-            user = foundUser;
-        }
         LoanApplication loanApplication = new LoanApplication();
-        loanApplication.setLoanAmount(request.getLoanAmount());
-        loanApplication.setPurposeForLoan(request.getPurposeForLoan());
-        loanApplication.setRepaymentPlan(RepaymentPlan.valueOf(request.getRepaymentPlan().toUpperCase()));
-        loanApplication.setCustomerId(user.getId());
-        loanApplication.setLoanStatus(Status.PENDING);
-        loanApplication.setLoanAgreement("");
+        if (foundUser.getRole().equals(Role.CUSTOMER)){
+            loanApplication = LoanApplication.builder()
+                    .purposeForLoan(request.getPurposeForLoan())
+                    .customerId(foundUser.getId())
+                    .loanAgreement("")
+                    .loanAmount(request.getLoanAmount())
+                    .loanStatus(Status.PENDING)
+                    .repaymentPlan(RepaymentPlan.valueOf(request.getRepaymentPlan().toUpperCase()))
+                    .build();
+        }
         LoanApplication savedLoanApplication = loanApplicationRepository.save(loanApplication);
         userRepository.save(user);
         return LoanApplicationResponse.builder()
